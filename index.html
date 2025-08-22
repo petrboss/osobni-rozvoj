@@ -28,6 +28,30 @@
     .pill input{appearance:none;width:18px;height:18px;border:2px solid var(--accent);border-radius:4px}
     .pill input:checked{background:var(--accent)}
     @media (max-width:640px){.row-nav{flex-wrap:wrap;gap:8px}}
+.chat-msg {
+  max-width: 75%;
+  padding: 10px 12px;
+  margin: 6px 0;
+  border-radius: 12px;
+  line-height: 1.35;
+}
+.chat-user {
+  margin-left: auto;
+  background: #2a2a36;
+}
+.chat-assistant {
+  margin-right: auto;
+  background: #1b1b28;
+}
+.chat-meta {
+  opacity: .7;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.typing {
+  opacity: .8;
+  font-style: italic;
+}
   </style>
 </head>
 <body>
@@ -81,15 +105,30 @@
   </section>
 
   <section id="chat" style="padding:8px 0 20px">
-    <h2>Chat (brzy)</h2>
-    <div class="card">
-      <p>Zatím jen „maketa“. V dalším kroku přidáme opravdový backend a AI.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input id="q" placeholder="Napiš otázku…" style="flex:1;min-width:220px;padding:10px;border-radius:10px;border:1px solid var(--muted);background:#12121a;color:var(--text)">
-        <button class="btn" id="askBtn">Zeptat se</button>
-      </div>
+  <h2>Chat</h2>
+
+  <div class="card" style="display:flex;flex-direction:column;gap:12px">
+    <!-- Okno konverzace -->
+    <div id="chatBox" class="chat-box" style="
+      height: 280px; overflow:auto; padding:12px; border-radius:10px;
+      background:#12121a; border:1px solid var(--muted);">
+      <!-- Zprávy se doplní skriptem -->
     </div>
-  </section>
+
+    <!-- Vstup a tlačítko -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input id="q" placeholder="Napiš zprávu a stiskni Enter…" 
+             style="flex:1;min-width:220px;padding:10px;border-radius:10px;
+                    border:1px solid var(--muted);background:#12121a;color:var(--text)">
+      <button class="btn" id="askBtn">Odeslat</button>
+    </div>
+
+    <!-- Malá nápověda -->
+    <div style="opacity:.7;font-size:12px">
+      Tip: Enter = odeslat, Shift+Enter = nový řádek.
+    </div>
+  </div>
+</section>
 
 <section id="ucet" style="padding:8px 0 20px">
   <h2>Účet</h2>
@@ -258,11 +297,43 @@
 <script>
   const askBtn = document.getElementById('askBtn');
   const inputQ = document.getElementById('q');
+  const chatBox = document.createElement('div');
+  chatBox.id = 'chatBox';
+  chatBox.style.maxHeight = '300px';
+  chatBox.style.overflowY = 'auto';
+  chatBox.style.marginTop = '12px';
+  document.querySelector('#chat .card').appendChild(chatBox);
+
+  function addBubble(text, sender = 'user') {
+    const bubble = document.createElement('div');
+    bubble.textContent = text;
+    bubble.style.padding = '8px 12px';
+    bubble.style.margin = '6px 0';
+    bubble.style.borderRadius = '12px';
+    bubble.style.maxWidth = '80%';
+    bubble.style.wordBreak = 'break-word';
+    bubble.style.whiteSpace = 'pre-wrap';
+
+    if (sender === 'user') {
+      bubble.style.background = '#2a2a36';
+      bubble.style.alignSelf = 'flex-end';
+    } else {
+      bubble.style.background = '#161623';
+      bubble.style.border = '1px solid #2a2a36';
+      bubble.style.alignSelf = 'flex-start';
+    }
+
+    bubble.style.display = 'inline-block';
+    chatBox.appendChild(bubble);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
 
   askBtn?.addEventListener('click', async () => {
     const question = (inputQ?.value || '').trim();
     if (!question) return alert('Napiš otázku!');
 
+    addBubble(question, 'user');
+    inputQ.value = '';
     askBtn.disabled = true;
     askBtn.textContent = 'Čekej...';
 
@@ -275,12 +346,12 @@
 
       const data = await r.json();
       if (data.reply) {
-        alert('AI odpověď: ' + data.reply);
+        addBubble(data.reply, 'ai');
       } else {
-        alert('Chyba: ' + JSON.stringify(data));
+        addBubble('Chyba: ' + JSON.stringify(data), 'ai');
       }
     } catch (e) {
-      alert('Nepodařilo se spojit s API: ' + e.message);
+      addBubble('Nepodařilo se spojit s API: ' + e.message, 'ai');
     }
 
     askBtn.disabled = false;
