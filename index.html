@@ -133,25 +133,31 @@
  <section id="chat" style="padding:8px 0 20px">
   <h2>Chat</h2>
   <div class="card">
-    <div class="chat-wrap">
-      <!-- okno s bublinami -->
-      <div id="chatBox" class="chat-box" aria-live="polite" aria-label="chat messages"></div>
+    <!-- okno s bublinami -->
+    <div id="chatBox" style="
+      height:320px; overflow:auto; padding:12px;
+      background:#12121a; border:1px solid var(--muted);
+      border-radius:14px; margin-bottom:10px;
+    "></div>
 
-      <!-- řádek pro psaní a odeslání -->
-      <div class="row-send">
-        <textarea id="ask" class="chat-input" rows="1"
-          placeholder="Napiš zprávu a stiskni Enter…"></textarea>
-        <button class="btn" id="askBtn">Zeptat se</button>
-      </div>
+    <!-- vstup + tlačítko -->
+    <div style="display:flex; gap:8px; align-items:flex-end;">
+      <textarea id="ask" placeholder="Napiš zprávu a stiskni Enter…"
+        style="flex:1; min-height:44px; max-height:120px; resize:none;
+               line-height:1.4; padding:12px; border-radius:10px;
+               border:1px solid var(--muted); background:#12121a; color:var(--text)"></textarea>
+      <button class="btn" id="askBtn" style="min-width:110px;">Zeptat se</button>
+    </div>
 
-      <div class="hint">Tip: <b>Enter</b> = odeslat, <b>Shift+Enter</b> = nový řádek.</div>
+    <p style="opacity:.7; font-size:12px; margin:8px 0 4px">
+      Tip: <strong>Enter</strong> = odeslat, <strong>Shift+Enter</strong> = nový řádek.
+    </p>
 
-      <!-- rychlé návrhy -->
-      <div class="chips">
-        <button class="chip" data-chip="Ahoj! Jak ti mohu pomoci?">Ahoj! Jak ti mohu pomoci?</button>
-        <button class="chip" data-chip="Co je dnes za den?">Co je dnes za den?</button>
-        <button class="chip" data-chip="Napiš mi jednu motivační větu.">Napiš mi jednu motivační větu.</button>
-      </div>
+    <!-- rychlé návrhy -->
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
+      <button class="chip" data-chip="Ahoj! Jak ti mohu pomoci?">Ahoj! Jak ti mohu pomoci?</button>
+      <button class="chip" data-chip="Napiš mi jednu motivační větu.">Napiš mi jednu motivační větu.</button>
+      <button class="chip" data-chip="Navrhni mi jednoduchý plán na dnešek.">Navrhni mi jednoduchý plán na dnešek.</button>
     </div>
   </div>
 </section>
@@ -360,10 +366,13 @@
   const ask     = document.getElementById('ask');
   const askBtn  = document.getElementById('askBtn');
 
-  // Pokud chybí prvky (pro jistotu), nic nespouštět
-  if (!chatBox || !ask || !askBtn) return;
+  // Bezpečnostní pojistka: pokud prvky chybí, nic nespouštět
+  if (!chatBox || !ask || !askBtn) {
+    console.warn('Chat UI prvky nenalezeny.');
+    return;
+  }
 
-  // URL na tvoje Vercel API (už ho máš zprovozněné)
+  // Tvoje Vercel API
   const API_URL = 'https://osobni-rozvoj-api.vercel.app/api/chat';
 
   // Přidání bubliny
@@ -397,9 +406,7 @@
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: text }]
-        })
+        body: JSON.stringify({ messages: [{ role: 'user', content: text }] })
       });
 
       const data = await res.json().catch(() => ({}));
@@ -416,7 +423,7 @@
   // Enter = odeslat, Shift+Enter = nový řádek
   ask.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+      e.preventDefault(); // zabrání novému řádku
       send();
     }
   });
@@ -424,7 +431,7 @@
   // Klik na tlačítko
   askBtn.addEventListener('click', send);
 
-  // Rychlé návrhy („chips“)
+  // Rychlé návrhy (chips)
   document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
       ask.value = chip.dataset.chip || chip.textContent;
