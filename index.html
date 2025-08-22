@@ -223,6 +223,7 @@
   let currentUser = null;
   let dbSyncAttached = false;
 
+  // === LOGIN ===
   loginBtn?.addEventListener('click', async () => {
     const email = (emailEl?.value || '').trim();
     if (!email){ loginMsg.textContent = 'Zadej e-mail.'; return; }
@@ -236,26 +237,53 @@
       : 'Zkontroluj e-mail a klikni na odkaz.';
   });
 
+  // === LOGOUT ===
   logoutBtn?.addEventListener('click', async () => {
     await supabase.auth.signOut();
     currentUser = null;
     location.reload();
   });
 
+  // === Po načtení: zjisti session ===
   const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) await onLogin(session.user);
+
+  if (session?.user) {
+    await onLogin(session.user);
+  } else {
+    // pokud není přihlášený → schovej chat a zobraz výzvu
+    const chatSection = document.querySelector('#chat');
+    if (chatSection) {
+      chatSection.innerHTML = `
+        <div class="card">
+          <p>Pro využití chatu se prosím <b>přihlas</b>.</p>
+          <button class="btn" onclick="document.querySelector('#ucet').scrollIntoView({behavior:'smooth'})">
+            Přihlásit se
+          </button>
+        </div>
+      `;
+    }
+  }
 
   supabase.auth.onAuthStateChange(async (_ev, sess) => {
     if (sess?.user) await onLogin(sess.user);
   });
 
+  // === Po přihlášení ===
   async function onLogin(user){
     currentUser = user;
 
+    // přepnout UI účtu
     outBox.style.display = 'none';
     inBox.style.display  = 'block';
     userEmail.textContent = user.email || user.id;
 
+    // Zobrazit chat sekci
+    const chatSection = document.querySelector('#chat');
+    if (chatSection) {
+      chatSection.style.display = 'block';
+    }
+
+    // 1) načti progress z DB
     const { data } = await supabase
       .from('progress')
       .select('lesson_id, done')
@@ -269,6 +297,7 @@
     });
     updateProgress();
 
+    // 2) poslouchat změny → ukládat do DB
     if (!dbSyncAttached){
       document.addEventListener('change', async (e) => {
         const t = e.target;
