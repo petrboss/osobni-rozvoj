@@ -91,6 +91,25 @@
     </div>
   </section>
 
+<section id="ucet" style="padding:8px 0 20px">
+  <h2>Účet</h2>
+  <div class="card" id="authCard">
+    <div id="loggedOut">
+      <p>Přihlas se e-mailem (pošleme odkaz):</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="email" type="email" placeholder="tvoje@adresa.cz" style="flex:1;min-width:220px;padding:10px;border-radius:10px;border:1px solid var(--muted);background:#12121a;color:var(--text)">
+        <button class="btn" id="loginBtn">Poslat přihlašovací odkaz</button>
+      </div>
+      <p id="loginMsg" style="opacity:.8;margin-top:8px"></p>
+    </div>
+    <div id="loggedIn" style="display:none">
+      <p>Přihlášen: <span id="userEmail"></span></p>
+      <button class="btn" id="logoutBtn">Odhlásit</button>
+    </div>
+  </div>
+</section>
+
+  
   <section id="jak-dal" style="padding:8px 0 32px">
     <h2>Jak budeme pokračovat</h2>
     <ol>
@@ -134,6 +153,55 @@
     }
   });
   load();
+</script>
+
+  <script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  // ↓↓↓ SEM vlož své údaje ze Supabase → Settings → API ↓↓↓
+  const SUPABASE_URL  = 'https://qcknmwqnfpeknwqmlxgj.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFja25td3FuZnBla253cW1seGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NTY1ODUsImV4cCI6MjA3MTQzMjU4NX0.MrQgO3N2JHXOPHxxemVhu7MzbXlDkqDiMmVvZbVF_UE';
+  // ↑↑↑ jen „anon public“ klíč; nikdy ne „service_role“ ↑↑↑
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  const $ = s => document.querySelector(s);
+  const loginBtn = $('#loginBtn');
+  const emailEl  = $('#email');
+  const loginMsg = $('#loginMsg');
+  const outBox   = $('#loggedOut');
+  const inBox    = $('#loggedIn');
+  const userEmail= $('#userEmail');
+  const logoutBtn= $('#logoutBtn');
+
+  // Odeslat magic link
+  loginBtn?.addEventListener('click', async () => {
+    const email = (emailEl?.value || '').trim();
+    if (!email){ loginMsg.textContent = 'Zadej e-mail.'; return; }
+    loginMsg.textContent = 'Posíláme odkaz...';
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options:{ emailRedirectTo: window.location.href }
+    });
+    loginMsg.textContent = error ? ('Chyba: '+error.message) : 'Zkontroluj e-mail a klikni na odkaz.';
+  });
+
+  // Odhlášení
+  logoutBtn?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    location.reload();
+  });
+
+  // Po načtení stránky zjisti session
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) showLoggedIn(session.user);
+  supabase.auth.onAuthStateChange((_ev, sess) => { if (sess?.user) showLoggedIn(sess.user); });
+
+  function showLoggedIn(user){
+    outBox.style.display = 'none';
+    inBox.style.display  = 'block';
+    userEmail.textContent = user.email || user.id;
+  }
 </script>
 </body>
 </html>
