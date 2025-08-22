@@ -210,6 +210,7 @@
   const REDIRECT_URL  = 'https://petrboss.github.io/osobni-rozvoj/';
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+  window.supabase = supabase; // ← zpřístupní supabase do globálu pro chat skript
 
   const $ = s => document.querySelector(s);
   const loginBtn  = $('#loginBtn');
@@ -222,6 +223,7 @@
 
   let currentUser = null;
   let dbSyncAttached = false;
+  let conversationId = null;
 
   // === LOGIN ===
   loginBtn?.addEventListener('click', async () => {
@@ -261,8 +263,48 @@
           </button>
         </div>
       `;
+          // === Najdi nebo vytvoř aktivní konverzaci pro uživatele ===
+    // Zkus najít poslední konverzaci
+    let { data: convs } = await supabase
+      .from('conversations')
+      .select('id')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (convs && convs.length) {
+      conversationId = convs[0].id;
+    } else {
+      const { data: created, error: convErr } = await supabase
+        .from('conversations')
+        .insert({ user_id: user.id, title: 'Moje konverzace' })
+        .select()
+        .single();
+      if (convErr) console.error('Create conversation error:', convErr);
+      conversationId = created?.id || null;
     }
-  }
+
+    // Po loginu můžeš (volitelně) načíst posledních X zpráv a vykreslit je:
+    if (conversationId) {
+      const { data: msgs } = await supabase
+        .from('messages')
+        .select('role, content, created_at')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
+        .limit(50);
+
+      // vykresli do bublin (použij funkci z chat skriptu, viz níže)
+      if (Array.isArray(msgs)) {
+        const chatBox = document.getElementById('chatBox');
+        msgs.forEach(m => {
+          const who = m.role === 'user' ? 'user' : 'ai';
+          const b = document.createElement('div');
+          b.className = `bubble ${who}`;
+          b.textContent = m.content;
+          chatBox.appendChild(b);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+    }
 
   supabase.auth.onAuthStateChange(async (_ev, sess) => {
     if (sess?.user) await onLogin(sess.user);
@@ -345,6 +387,48 @@
   autoresize();
   ask.addEventListener('input', autoresize);
 
+  // Zajistí, že existuje aktivní konverzace pro přihlášeného uživatele.
+  // Vrací ID konverzace nebo null, pokud uživatel není přihlášen.
+  async function ensureConversation() {
+    const sb = window.supabase;
+    if (!sb) return null;
+
+    // zkus použít už existující conversationId v okně
+    if (window.conversationId) return window.conversationId;
+
+    // potřebujeme být přihlášeni
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return null;
+
+    // najdi poslední konverzaci
+    let { data: convs, error } = await sb
+      .from('conversations')
+      .select('id')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (!error && convs && convs.length) {
+      window.conversationId = convs[0].id;
+      return window.conversationId;
+    }
+
+    // žádná není → vytvoř novou
+    const { data: created, error: err2 } = await sb
+      .from('conversations')
+      .insert({ user_id: user.id, title: 'Moje konverzace' })
+      .select()
+      .single();
+
+    if (err2) {
+      console.warn('Create conversation error:', err2);
+      return null;
+    }
+
+    window.conversationId = created.id;
+    return window.conversationId;
+  }
+
+  // Odeslání zprávy: uložíme user → zavoláme API → uložíme assistant
   async function send() {
     const text = (ask.value || '').trim();
     if (!text) return;
@@ -354,7 +438,22 @@
     autoresize();
     askBtn.disabled = true;
 
+    let convId = null;
+
     try {
+      // 1) zajisti konverzaci (pokud je uživatel přihlášen)
+      if (window.supabase) {
+        convId = await ensureConversation();
+        if (convId) {
+          await window.supabase.from('messages').insert({
+            conversation_id: convId,
+            role: 'user',
+            content: text
+          });
+        }
+      }
+
+      // 2) zavolej API
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -364,6 +463,15 @@
       const data = await res.json().catch(() => ({}));
       const reply = data.reply || data.message || data.error || 'Něco se pokazilo.';
       addBubble(reply, 'ai');
+
+      // 3) ulož assistant zprávu (pokud máme konverzaci)
+      if (window.supabase && convId) {
+        await window.supabase.from('messages').insert({
+          conversation_id: convId,
+          role: 'assistant',
+          content: reply
+        });
+      }
     } catch (e) {
       addBubble('Nepodařilo se spojit s API: ' + e.message, 'ai');
     } finally {
@@ -382,7 +490,7 @@
 
   askBtn.addEventListener('click', send);
 
-  // Chips
+  // Chips vyplní text a nechají odeslat Enterem
   document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
       ask.value = chip.dataset.chip || chip.textContent;
@@ -391,7 +499,7 @@
     });
   });
 
-  // Volitelný pozdrav
+  // Pozdrav
   addBubble('Ahoj! Napiš zprávu a stiskni Enter. 🙂', 'ai');
 })();
 </script>
