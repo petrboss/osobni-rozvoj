@@ -52,6 +52,32 @@
   opacity: .8;
   font-style: italic;
 }
+    /* === Chat UI (krok 1) === */
+.chat-wrap{display:flex;flex-direction:column;gap:10px}
+.chat-box{
+  height:320px;overflow:auto;padding:12px;
+  background:#12121a;border:1px solid var(--muted);border-radius:12px
+}
+.bubble{
+  max-width:75%;margin:6px 0;padding:10px 12px;border-radius:14px;
+  word-wrap:break-word;white-space:pre-wrap;
+  background:#1c1c2b;border:1px solid #2a2a36
+}
+.bubble.me{margin-left:auto;background:#24304a;border-color:#2f3b5d}
+.bubble.bot{margin-right:auto}
+.row-send{display:flex;gap:8px;align-items:flex-end}
+.chat-input{
+  flex:1;min-height:40px;max-height:160px;resize:none;
+  padding:10px;border-radius:10px;border:1px solid var(--muted);
+  background:#12121a;color:var(--text)
+}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  background:#1b1b28;border:1px solid var(--muted);
+  border-radius:999px;padding:6px 10px;cursor:pointer
+}
+.hint{opacity:.7;font-size:12px}
+
   </style>
 </head>
 <body>
