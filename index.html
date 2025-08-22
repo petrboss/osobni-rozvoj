@@ -130,28 +130,28 @@
     </div>
   </section>
 
-  <section id="chat" style="padding:8px 0 20px">
+ <section id="chat" style="padding:8px 0 20px">
   <h2>Chat</h2>
+  <div class="card">
+    <div class="chat-wrap">
+      <!-- okno s bublinami -->
+      <div id="chatBox" class="chat-box" aria-live="polite" aria-label="chat messages"></div>
 
-  <div class="card" style="display:flex;flex-direction:column;gap:12px">
-    <!-- Okno konverzace -->
-    <div id="chatBox" class="chat-box" style="
-      height: 280px; overflow:auto; padding:12px; border-radius:10px;
-      background:#12121a; border:1px solid var(--muted);">
-      <!-- Zprávy se doplní skriptem -->
-    </div>
+      <!-- řádek pro psaní a odeslání -->
+      <div class="row-send">
+        <textarea id="ask" class="chat-input" rows="1"
+          placeholder="Napiš zprávu a stiskni Enter…"></textarea>
+        <button class="btn" id="askBtn">Zeptat se</button>
+      </div>
 
-    <!-- Vstup a tlačítko -->
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <input id="q" placeholder="Napiš zprávu a stiskni Enter…" 
-             style="flex:1;min-width:220px;padding:10px;border-radius:10px;
-                    border:1px solid var(--muted);background:#12121a;color:var(--text)">
-      <button class="btn" id="askBtn">Odeslat</button>
-    </div>
+      <div class="hint">Tip: <b>Enter</b> = odeslat, <b>Shift+Enter</b> = nový řádek.</div>
 
-    <!-- Malá nápověda -->
-    <div style="opacity:.7;font-size:12px">
-      Tip: Enter = odeslat, Shift+Enter = nový řádek.
+      <!-- rychlé návrhy -->
+      <div class="chips">
+        <button class="chip" data-chip="Ahoj! Jak ti mohu pomoci?">Ahoj! Jak ti mohu pomoci?</button>
+        <button class="chip" data-chip="Co je dnes za den?">Co je dnes za den?</button>
+        <button class="chip" data-chip="Napiš mi jednu motivační větu.">Napiš mi jednu motivační větu.</button>
+      </div>
     </div>
   </div>
 </section>
