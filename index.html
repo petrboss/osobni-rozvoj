@@ -86,7 +86,7 @@
       <p>Zatím jen „maketa“. V dalším kroku přidáme opravdový backend a AI.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input id="q" placeholder="Napiš otázku…" style="flex:1;min-width:220px;padding:10px;border-radius:10px;border:1px solid var(--muted);background:#12121a;color:var(--text)">
-        <button class="btn" onclick="alert('V dalším kroku napojíme AI na serveru.');">Zeptat se</button>
+        <button class="btn" id="askBtn">Zeptat se</button>
       </div>
     </div>
   </section>
@@ -255,7 +255,37 @@
     }
   }
 </script>
+<script>
+  const askBtn = document.getElementById('askBtn');
+  const inputQ = document.getElementById('q');
 
+  askBtn?.addEventListener('click', async () => {
+    const question = (inputQ?.value || '').trim();
+    if (!question) return alert('Napiš otázku!');
+
+    askBtn.disabled = true;
+    askBtn.textContent = 'Čekej...';
+
+    try {
+      const r = await fetch('https://osobni-rozvoj-api.vercel.app/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: question }] })
+      });
+
+      const data = await r.json();
+      if (data.reply) {
+        alert('AI odpověď: ' + data.reply);
+      } else {
+        alert('Chyba: ' + JSON.stringify(data));
+      }
+    } catch (e) {
+      alert('Nepodařilo se spojit s API: ' + e.message);
+    }
+
+    askBtn.disabled = false;
+    askBtn.textContent = 'Zeptat se';
+  });
 </script>
 </body>
 </html>
