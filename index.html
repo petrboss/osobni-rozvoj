@@ -28,56 +28,40 @@
     .pill input{appearance:none;width:18px;height:18px;border:2px solid var(--accent);border-radius:4px}
     .pill input:checked{background:var(--accent)}
     @media (max-width:640px){.row-nav{flex-wrap:wrap;gap:8px}}
-.chat-msg {
-  max-width: 75%;
-  padding: 10px 12px;
-  margin: 6px 0;
-  border-radius: 12px;
-  line-height: 1.35;
-}
-.chat-user {
-  margin-left: auto;
-  background: #2a2a36;
-}
-.chat-assistant {
-  margin-right: auto;
-  background: #1b1b28;
-}
-.chat-meta {
-  opacity: .7;
-  font-size: 12px;
-  margin-top: 4px;
-}
-.typing {
-  opacity: .8;
-  font-style: italic;
-}
-    /* === Chat UI (krok 1) === */
-.chat-wrap{display:flex;flex-direction:column;gap:10px}
-.chat-box{
-  height:320px;overflow:auto;padding:12px;
-  background:#12121a;border:1px solid var(--muted);border-radius:12px
-}
-.bubble{
-  max-width:75%;margin:6px 0;padding:10px 12px;border-radius:14px;
-  word-wrap:break-word;white-space:pre-wrap;
-  background:#1c1c2b;border:1px solid #2a2a36
-}
-.bubble.me{margin-left:auto;background:#24304a;border-color:#2f3b5d}
-.bubble.bot{margin-right:auto}
-.row-send{display:flex;gap:8px;align-items:flex-end}
-.chat-input{
-  flex:1;min-height:40px;max-height:160px;resize:none;
-  padding:10px;border-radius:10px;border:1px solid var(--muted);
-  background:#12121a;color:var(--text)
-}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{
-  background:#1b1b28;border:1px solid var(--muted);
-  border-radius:999px;padding:6px 10px;cursor:pointer
-}
-.hint{opacity:.7;font-size:12px}
 
+    /* (ponechávám i tvoje dřívější chat-msg styly pro jistotu kompatibility) */
+    .chat-msg{max-width:75%;padding:10px 12px;margin:6px 0;border-radius:12px;line-height:1.35}
+    .chat-user{margin-left:auto;background:#2a2a36}
+    .chat-assistant{margin-right:auto;background:#1b1b28}
+    .chat-meta{opacity:.7;font-size:12px;margin-top:4px}
+    .typing{opacity:.8;font-style:italic}
+
+    /* === Chat UI (nové bubliny) === */
+    .chat-wrap{display:flex;flex-direction:column;gap:10px}
+    .chat-box{
+      height:320px;overflow:auto;padding:12px;
+      background:#12121a;border:1px solid var(--muted);border-radius:12px
+    }
+    .bubble{
+      max-width:75%;margin:6px 0;padding:10px 12px;border-radius:14px;
+      word-wrap:break-word;white-space:pre-wrap;
+      background:#1c1c2b;border:1px solid #2a2a36
+    }
+    .bubble.user{margin-left:auto;background:#24304a;border-color:#2f3b5d}
+    .bubble.ai{margin-right:auto}
+    .row-send{display:flex;gap:8px;align-items:flex-end}
+    .chat-input{
+      flex:1;min-height:40px;max-height:160px;resize:none;
+      padding:10px;border-radius:10px;border:1px solid var(--muted);
+      background:#12121a;color:var(--text)
+    }
+    .chips{display:flex;flex-wrap:wrap;gap:8px}
+    .chip{
+      background:#1b1b28;border:1px solid var(--muted);
+      border-radius:999px;padding:6px 10px;cursor:pointer
+    }
+    .chip:hover{filter:brightness(1.1)}
+    .hint{opacity:.7;font-size:12px}
   </style>
 </head>
 <body>
@@ -86,7 +70,7 @@
     <div class="brand">Osobní rozvoj (MVP)</div>
     <nav style="display:flex;gap:8px">
       <a class="btn" href="#kurzy">Kurzy</a>
-      <a class="btn" href="#chat">Chat (brzy)</a>
+      <a class="btn" href="#chat">Chat</a>
       <a class="btn" href="#jak-dal">Jak dál</a>
     </nav>
   </div>
@@ -130,57 +114,48 @@
     </div>
   </section>
 
- <section id="chat" style="padding:8px 0 20px">
-  <h2>Chat</h2>
-  <div class="card">
-    <!-- okno s bublinami -->
-    <div id="chatBox" style="
-      height:320px; overflow:auto; padding:12px;
-      background:#12121a; border:1px solid var(--muted);
-      border-radius:14px; margin-bottom:10px;
-    "></div>
+  <!-- CHAT -->
+  <section id="chat" style="padding:8px 0 20px">
+    <h2>Chat</h2>
+    <div class="card">
+      <div class="chat-wrap">
+        <div id="chatBox" class="chat-box" aria-live="polite" aria-label="chat messages"></div>
 
-    <!-- vstup + tlačítko -->
-    <div style="display:flex; gap:8px; align-items:flex-end;">
-      <textarea id="ask" placeholder="Napiš zprávu a stiskni Enter…"
-        style="flex:1; min-height:44px; max-height:120px; resize:none;
-               line-height:1.4; padding:12px; border-radius:10px;
-               border:1px solid var(--muted); background:#12121a; color:var(--text)"></textarea>
-      <button class="btn" id="askBtn" style="min-width:110px;">Zeptat se</button>
-    </div>
+        <div class="row-send">
+          <textarea id="ask" class="chat-input" rows="1"
+            placeholder="Napiš zprávu a stiskni Enter…"></textarea>
+          <button class="btn" id="askBtn">Zeptat se</button>
+        </div>
 
-    <p style="opacity:.7; font-size:12px; margin:8px 0 4px">
-      Tip: <strong>Enter</strong> = odeslat, <strong>Shift+Enter</strong> = nový řádek.
-    </p>
+        <div class="hint">Tip: <b>Enter</b> = odeslat, <b>Shift+Enter</b> = nový řádek.</div>
 
-    <!-- rychlé návrhy -->
-    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
-      <button class="chip" data-chip="Ahoj! Jak ti mohu pomoci?">Ahoj! Jak ti mohu pomoci?</button>
-      <button class="chip" data-chip="Napiš mi jednu motivační větu.">Napiš mi jednu motivační větu.</button>
-      <button class="chip" data-chip="Navrhni mi jednoduchý plán na dnešek.">Navrhni mi jednoduchý plán na dnešek.</button>
-    </div>
-  </div>
-</section>
-
-<section id="ucet" style="padding:8px 0 20px">
-  <h2>Účet</h2>
-  <div class="card" id="authCard">
-    <div id="loggedOut">
-      <p>Přihlas se e-mailem (pošleme odkaz):</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input id="email" type="email" placeholder="tvoje@adresa.cz" style="flex:1;min-width:220px;padding:10px;border-radius:10px;border:1px solid var(--muted);background:#12121a;color:var(--text)">
-        <button class="btn" id="loginBtn">Poslat přihlašovací odkaz</button>
+        <div class="chips">
+          <button class="chip" data-chip="Ahoj! Jak ti mohu pomoci?">Ahoj! Jak ti mohu pomoci?</button>
+          <button class="chip" data-chip="Napiš mi jednu motivační větu.">Napiš mi jednu motivační větu.</button>
+          <button class="chip" data-chip="Navrhni mi jednoduchý plán na dnešek.">Navrhni mi jednoduchý plán na dnešek.</button>
+        </div>
       </div>
-      <p id="loginMsg" style="opacity:.8;margin-top:8px"></p>
     </div>
-    <div id="loggedIn" style="display:none">
-      <p>Přihlášen: <span id="userEmail"></span></p>
-      <button class="btn" id="logoutBtn">Odhlásit</button>
-    </div>
-  </div>
-</section>
+  </section>
 
-  
+  <section id="ucet" style="padding:8px 0 20px">
+    <h2>Účet</h2>
+    <div class="card" id="authCard">
+      <div id="loggedOut">
+        <p>Přihlas se e-mailem (pošleme odkaz):</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="email" type="email" placeholder="tvoje@adresa.cz" style="flex:1;min-width:220px;padding:10px;border-radius:10px;border:1px solid var(--muted);background:#12121a;color:var(--text)">
+          <button class="btn" id="loginBtn">Poslat přihlašovací odkaz</button>
+        </div>
+        <p id="loginMsg" style="opacity:.8;margin-top:8px"></p>
+      </div>
+      <div id="loggedIn" style="display:none">
+        <p>Přihlášen: <span id="userEmail"></span></p>
+        <button class="btn" id="logoutBtn">Odhlásit</button>
+      </div>
+    </div>
+  </section>
+
   <section id="jak-dal" style="padding:8px 0 32px">
     <h2>Jak budeme pokračovat</h2>
     <ol>
@@ -194,8 +169,8 @@
 
 <footer class="container">© 2025 Osobní rozvoj • MVP • Stavíme krok za krokem</footer>
 
+<!-- Kurzy: localStorage + progress -->
 <script>
-  // Mini logika: ukládání „splněno“ do localStorage + progress bary
   const idsByCourse = [
     ['l1','l2','l3'],
     ['l4','l5','l6'],
@@ -226,17 +201,16 @@
   load();
 </script>
 
- <script type="module">
+<!-- Supabase login -->
+<script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-  // nech si tady své hodnoty (URL a anon klíč)
   const SUPABASE_URL  = 'https://qcknmwqnfpeknwqmlxgj.supabase.co';
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFja25td3FuZnBla253cW1seGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NTY1ODUsImV4cCI6MjA3MTQzMjU4NX0.MrQgO3N2JHXOPHxxemVhu7MzbXlDkqDiMmVvZbVF_UE';
   const REDIRECT_URL  = 'https://petrboss.github.io/osobni-rozvoj/';
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-  // --- DOM prvky (už je máš v HTML) ---
   const $ = s => document.querySelector(s);
   const loginBtn  = $('#loginBtn');
   const emailEl   = $('#email');
@@ -246,14 +220,9 @@
   const userEmail = $('#userEmail');
   const logoutBtn = $('#logoutBtn');
 
-  // tyto proměnné/funkce jsou v horním skriptu:
-  // const idsByCourse = [['l1','l2','l3'], ['l4','l5','l6'], ['l7','l8','l9']];
-  // function updateProgress() { ... }
-
   let currentUser = null;
   let dbSyncAttached = false;
 
-  // --- LOGIN (magic link) ---
   loginBtn?.addEventListener('click', async () => {
     const email = (emailEl?.value || '').trim();
     if (!email){ loginMsg.textContent = 'Zadej e-mail.'; return; }
@@ -267,14 +236,12 @@
       : 'Zkontroluj e-mail a klikni na odkaz.';
   });
 
-  // --- LOGOUT ---
   logoutBtn?.addEventListener('click', async () => {
     await supabase.auth.signOut();
     currentUser = null;
     location.reload();
   });
 
-  // --- Po načtení: zkontroluj session ---
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) await onLogin(session.user);
 
@@ -285,18 +252,15 @@
   async function onLogin(user){
     currentUser = user;
 
-    // přepnout UI
     outBox.style.display = 'none';
     inBox.style.display  = 'block';
     userEmail.textContent = user.email || user.id;
 
-    // 1) načti progress z DB
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('progress')
       .select('lesson_id, done')
       .eq('user_id', user.id);
 
-    // 2) propsat do checkboxů (co je v DB má přednost)
     const map = new Map((data || []).map(r => [r.lesson_id, !!r.done]));
     idsByCourse.flat().forEach(id => {
       const el = document.getElementById(id);
@@ -305,15 +269,11 @@
     });
     updateProgress();
 
-    // 3) jednorázově připoj listener pro ukládání do DB
     if (!dbSyncAttached){
       document.addEventListener('change', async (e) => {
         const t = e.target;
         if (!(t && t.id && t.type === 'checkbox')) return;
-        // vždy aktualizuj localStorage kvůli offline
         localStorage.setItem('done:'+t.id, t.checked ? '1' : '0');
-
-        // pokud je uživatel přihlášen, ulož i do DB
         if (currentUser){
           await supabase.from('progress').upsert({
             user_id: currentUser.id,
@@ -326,56 +286,21 @@
     }
   }
 </script>
-<script>
-  const askBtn = document.getElementById('askBtn');
-  const inputQ = document.getElementById('q');
-  const chatBox = document.createElement('div');
-  chatBox.id = 'chatBox';
-  chatBox.style.maxHeight = '300px';
-  chatBox.style.overflowY = 'auto';
-  chatBox.style.marginTop = '12px';
-  document.querySelector('#chat .card').appendChild(chatBox);
 
-  function addBubble(text, sender = 'user') {
-    const bubble = document.createElement('div');
-    bubble.textContent = text;
-    bubble.style.padding = '8px 12px';
-    bubble.style.margin = '6px 0';
-    bubble.style.borderRadius = '12px';
-    bubble.style.maxWidth = '80%';
-    bubble.style.wordBreak = 'break-word';
-    bubble.style.whiteSpace = 'pre-wrap';
-
-    if (sender === 'user') {
-      bubble.style.background = '#2a2a36';
-      bubble.style.alignSelf = 'flex-end';
-    } else {
-      bubble.style.background = '#161623';
-      bubble.style.border = '1px solid #2a2a36';
-      bubble.style.alignSelf = 'flex-start';
-    }
-
-    bubble.style.display = 'inline-block';
-    chatBox.appendChild(bubble);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-
+<!-- JEDINÝ chat skript -->
 <script>
 (() => {
   const chatBox = document.getElementById('chatBox');
   const ask     = document.getElementById('ask');
   const askBtn  = document.getElementById('askBtn');
 
-  // Bezpečnostní pojistka: pokud prvky chybí, nic nespouštět
   if (!chatBox || !ask || !askBtn) {
     console.warn('Chat UI prvky nenalezeny.');
     return;
   }
 
-  // Tvoje Vercel API
   const API_URL = 'https://osobni-rozvoj-api.vercel.app/api/chat';
 
-  // Přidání bubliny
   function addBubble(text, who = 'user') {
     const b = document.createElement('div');
     b.className = `bubble ${who}`;
@@ -384,7 +309,6 @@
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // Auto-resize textarea
   function autoresize() {
     ask.style.height = 'auto';
     ask.style.height = Math.min(ask.scrollHeight, 120) + 'px';
@@ -392,7 +316,6 @@
   autoresize();
   ask.addEventListener('input', autoresize);
 
-  // Odeslání zprávy
   async function send() {
     const text = (ask.value || '').trim();
     if (!text) return;
@@ -423,15 +346,14 @@
   // Enter = odeslat, Shift+Enter = nový řádek
   ask.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // zabrání novému řádku
+      e.preventDefault();
       send();
     }
   });
 
-  // Klik na tlačítko
   askBtn.addEventListener('click', send);
 
-  // Rychlé návrhy (chips)
+  // Chips
   document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
       ask.value = chip.dataset.chip || chip.textContent;
@@ -439,7 +361,11 @@
       ask.focus();
     });
   });
+
+  // Volitelný pozdrav
+  addBubble('Ahoj! Napiš zprávu a stiskni Enter. 🙂', 'ai');
 })();
 </script>
+
 </body>
 </html>
