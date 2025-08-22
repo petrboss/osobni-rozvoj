@@ -155,17 +155,18 @@
   load();
 </script>
 
-  <script type="module">
+ <script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-  // ↓↓↓ SEM vlož své údaje ze Supabase → Settings → API ↓↓↓
+  // >>> tvoje údaje z Supabase (ponech tak, jak je máš) <<<
   const SUPABASE_URL  = 'https://qcknmwqnfpeknwqmlxgj.supabase.co';
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFja25td3FuZnBla253cW1seGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NTY1ODUsImV4cCI6MjA3MTQzMjU4NX0.MrQgO3N2JHXOPHxxemVhu7MzbXlDkqDiMmVvZbVF_UE';
-  // ↑↑↑ jen „anon public“ klíč; nikdy ne „service_role“ ↑↑↑
+  const REDIRECT_URL  = 'https://petrboss.github.io/osobni-rozvoj/';
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-  const $ = s => document.querySelector(s);
+  // --- DOM ---
+  const $ = (s)=>document.querySelector(s);
   const loginBtn = $('#loginBtn');
   const emailEl  = $('#email');
   const loginMsg = $('#loginMsg');
@@ -174,33 +175,70 @@
   const userEmail= $('#userEmail');
   const logoutBtn= $('#logoutBtn');
 
-  // Odeslat magic link
+  // tyto dvě proměnné a funkce už máš v horním skriptu:
+  // idsByCourse  = [['l1','l2','l3'], ...]
+  // updateProgress() – přepočítá progress bary
+
+  // --- LOGIN (magic link) ---
   loginBtn?.addEventListener('click', async () => {
     const email = (emailEl?.value || '').trim();
     if (!email){ loginMsg.textContent = 'Zadej e-mail.'; return; }
     loginMsg.textContent = 'Posíláme odkaz...';
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options:{ emailRedirectTo: 'https://petrboss.github.io/osobni-rozvoj/' }
+      options:{ emailRedirectTo: REDIRECT_URL }
     });
     loginMsg.textContent = error ? ('Chyba: '+error.message) : 'Zkontroluj e-mail a klikni na odkaz.';
   });
 
-  // Odhlášení
+  // --- LOGOUT ---
   logoutBtn?.addEventListener('click', async () => {
     await supabase.auth.signOut();
     location.reload();
   });
 
-  // Po načtení stránky zjisti session
+  // --- Po načtení: session + případné načtení progresu z DB ---
   const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) showLoggedIn(session.user);
-  supabase.auth.onAuthStateChange((_ev, sess) => { if (sess?.user) showLoggedIn(sess.user); });
+  if (session?.user) await onLogin(session.user);
+  supabase.auth.onAuthStateChange(async (_ev, sess) => {
+    if (sess?.user) await onLogin(sess.user);
+  });
 
-  function showLoggedIn(user){
+  async function onLogin(user){
+    // přepnout UI
     outBox.style.display = 'none';
     inBox.style.display  = 'block';
     userEmail.textContent = user.email || user.id;
+
+    // 1) načíst progres z DB
+    const { data, error } = await supabase
+      .from('progress')
+      .select('lesson_id, done')
+      .eq('user_id', user.id);
+
+    // 2) propsat do checkboxů a přepočítat progress bary
+    const map = new Map((data||[]).map(r => [r.lesson_id, !!r.done]));
+    idsByCourse.flat().forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      // pokud DB něco má, vezmeme stav z DB, jinak necháme co bylo
+      if (map.has(id)) el.checked = map.get(id);
+    });
+    updateProgress();
+
+    // 3) při každé změně ukládej i do DB (upsert)
+    document.addEventListener('change', async (e) => {
+      if (!(e.target && e.target.id && e.target.type === 'checkbox')) return;
+      const id = e.target.id;
+      const done = !!e.target.checked;
+      await supabase.from('progress').upsert({
+        user_id: user.id,
+        lesson_id: id,
+        done
+      });
+      // volitelně můžeš synchronně udržet i localStorage:
+      localStorage.setItem('done:'+id, done ? '1' : '0');
+    }, { once:false });
   }
 </script>
 </body>
