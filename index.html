@@ -181,7 +181,7 @@
     loginMsg.textContent = 'Posíláme odkaz...';
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options:{ emailRedirectTo: window.location.href }
+      options:{ emailRedirectTo: 'https://petrboss.github.io/osobni-rozvoj/' }
     });
     loginMsg.textContent = error ? ('Chyba: '+error.message) : 'Zkontroluj e-mail a klikni na odkaz.';
   });
