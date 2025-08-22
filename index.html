@@ -354,35 +354,85 @@
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  askBtn?.addEventListener('click', async () => {
-    const question = (inputQ?.value || '').trim();
-    if (!question) return alert('Napiš otázku!');
+<script>
+(() => {
+  const chatBox = document.getElementById('chatBox');
+  const ask     = document.getElementById('ask');
+  const askBtn  = document.getElementById('askBtn');
 
-    addBubble(question, 'user');
-    inputQ.value = '';
+  // Pokud chybí prvky (pro jistotu), nic nespouštět
+  if (!chatBox || !ask || !askBtn) return;
+
+  // URL na tvoje Vercel API (už ho máš zprovozněné)
+  const API_URL = 'https://osobni-rozvoj-api.vercel.app/api/chat';
+
+  // Přidání bubliny
+  function addBubble(text, who = 'user') {
+    const b = document.createElement('div');
+    b.className = `bubble ${who}`;
+    b.textContent = text;
+    chatBox.appendChild(b);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  // Auto-resize textarea
+  function autoresize() {
+    ask.style.height = 'auto';
+    ask.style.height = Math.min(ask.scrollHeight, 120) + 'px';
+  }
+  autoresize();
+  ask.addEventListener('input', autoresize);
+
+  // Odeslání zprávy
+  async function send() {
+    const text = (ask.value || '').trim();
+    if (!text) return;
+
+    addBubble(text, 'user');
+    ask.value = '';
+    autoresize();
     askBtn.disabled = true;
-    askBtn.textContent = 'Čekej...';
 
     try {
-      const r = await fetch('https://osobni-rozvoj-api.vercel.app/api/chat', {
+      const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'user', content: question }] })
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: text }]
+        })
       });
 
-      const data = await r.json();
-      if (data.reply) {
-        addBubble(data.reply, 'ai');
-      } else {
-        addBubble('Chyba: ' + JSON.stringify(data), 'ai');
-      }
+      const data = await res.json().catch(() => ({}));
+      const reply = data.reply || data.message || data.error || 'Něco se pokazilo.';
+      addBubble(reply, 'ai');
     } catch (e) {
       addBubble('Nepodařilo se spojit s API: ' + e.message, 'ai');
+    } finally {
+      askBtn.disabled = false;
+      ask.focus();
     }
+  }
 
-    askBtn.disabled = false;
-    askBtn.textContent = 'Zeptat se';
+  // Enter = odeslat, Shift+Enter = nový řádek
+  ask.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
   });
+
+  // Klik na tlačítko
+  askBtn.addEventListener('click', send);
+
+  // Rychlé návrhy („chips“)
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      ask.value = chip.dataset.chip || chip.textContent;
+      autoresize();
+      ask.focus();
+    });
+  });
+})();
 </script>
 </body>
 </html>
