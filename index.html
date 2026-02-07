@@ -66,6 +66,16 @@
   font-weight:600;
 }
 
+    /* === Ekonomická hra === */
+    .econ-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+    .stat{background:#12121a;border:1px solid var(--muted);padding:10px;border-radius:12px}
+    .stat small{opacity:.7;display:block}
+    .actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px}
+    .actions .btn{width:100%}
+    .log{background:#12121a;border:1px solid var(--muted);padding:10px;border-radius:12px;max-height:160px;overflow:auto}
+    .goal{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .badge{display:inline-flex;align-items:center;gap:6px;background:#1c1c2b;border:1px solid var(--muted);border-radius:999px;padding:6px 10px;font-size:12px}
+
   </style>
 </head>
 <body>
@@ -73,6 +83,7 @@
   <div class="container row row-nav">
     <div class="brand">Osobní rozvoj (MVP)</div>
     <nav style="display:flex;gap:8px">
+      <a class="btn" href="#hra">Hra</a>
       <a class="btn" href="#kurzy">Kurzy</a>
       <a class="btn" href="#chat">Chat</a>
       <a class="btn" href="#jak-dal">Jak dál</a>
@@ -86,6 +97,39 @@
     <h1>Platforma pro vzdělávání & osobní růst</h1>
     <p>Toto je první veřejná verze – jen statická stránka. Postupně přidáme přihlášení, databázi, AI chat a sociální prvky.</p>
     <button class="btn" onclick="document.querySelector('#kurzy').scrollIntoView({behavior:'smooth'})">Začít</button>
+  </section>
+
+  <section id="hra" style="padding:8px 0 20px">
+    <h2>Online ekonomická hra (MVP)</h2>
+    <div class="card">
+      <p>Vybuduj kapitál do 30 dnů. Každý tah stojí den a energii – sleduj hotovost, znalosti i reputaci.</p>
+      <div class="goal">
+        <span class="badge">🎯 Cíl: 5&nbsp;000 Kč do 30. dne</span>
+        <span class="badge">💡 Tip: Investuj, až budeš mít rezervu.</span>
+      </div>
+      <div class="econ-grid" style="margin-top:12px">
+        <div class="stat"><small>Den</small><strong id="statDay">1</strong></div>
+        <div class="stat"><small>Hotovost</small><strong id="statCash">0</strong></div>
+        <div class="stat"><small>Energie</small><strong id="statEnergy">0</strong></div>
+        <div class="stat"><small>Znalosti</small><strong id="statKnowledge">0</strong></div>
+        <div class="stat"><small>Reputace</small><strong id="statRep">0</strong></div>
+        <div class="stat"><small>Investice</small><strong id="statInvest">0</strong></div>
+      </div>
+      <div class="actions">
+        <button class="btn" data-action="work">Práce na zakázkách</button>
+        <button class="btn" data-action="study">Studium dovedností</button>
+        <button class="btn" data-action="invest">Investovat přebytek</button>
+        <button class="btn" data-action="rest">Odpočinek</button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn" id="restartGame">Nová hra</button>
+        <button class="btn" id="collectInvest">Vybrat investice</button>
+      </div>
+      <div style="margin-top:12px">
+        <strong>Poslední události</strong>
+        <div class="log" id="gameLog" aria-live="polite"></div>
+      </div>
+    </div>
   </section>
 
   <section id="kurzy" style="padding:8px 0 20px">
@@ -315,6 +359,169 @@
     if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }
   });
   askBtn.addEventListener('click', send);
+})();
+</script>
+
+<!-- Ekonomická hra -->
+<script>
+(() => {
+  const el = id => document.getElementById(id);
+  const stats = {
+    day: el('statDay'),
+    cash: el('statCash'),
+    energy: el('statEnergy'),
+    knowledge: el('statKnowledge'),
+    reputation: el('statRep'),
+    invest: el('statInvest')
+  };
+  const logEl = el('gameLog');
+  const restartBtn = el('restartGame');
+  const collectBtn = el('collectInvest');
+  const actionButtons = document.querySelectorAll('[data-action]');
+
+  if (!stats.day || !logEl || !restartBtn || !collectBtn) return;
+
+  const STORAGE_KEY = 'econGameState';
+  const START = { day: 1, cash: 800, energy: 8, knowledge: 1, reputation: 0, invest: 0 };
+
+  let state = loadState();
+
+  function loadState() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return { ...START, log: ['🎮 Nová hra spuštěna.'] };
+    try {
+      const parsed = JSON.parse(saved);
+      return { ...START, ...parsed, log: parsed.log || [] };
+    } catch {
+      return { ...START, log: ['🎮 Nová hra spuštěna.'] };
+    }
+  }
+
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function addLog(message) {
+    state.log.unshift(message);
+    state.log = state.log.slice(0, 6);
+  }
+
+  function formatCash(value) {
+    return `${Math.max(0, Math.round(value)).toLocaleString('cs-CZ')} Kč`;
+  }
+
+  function render() {
+    stats.day.textContent = state.day;
+    stats.cash.textContent = formatCash(state.cash);
+    stats.energy.textContent = `${state.energy}/10`;
+    stats.knowledge.textContent = state.knowledge;
+    stats.reputation.textContent = state.reputation;
+    stats.invest.textContent = formatCash(state.invest);
+    logEl.innerHTML = state.log.map(item => `<div>• ${item}</div>`).join('');
+    const blocked = state.day > 30 || state.energy <= 0;
+    actionButtons.forEach(btn => btn.disabled = blocked);
+    collectBtn.disabled = state.invest <= 0;
+  }
+
+  function nextDay() {
+    state.day += 1;
+    state.energy = Math.min(10, state.energy + 2);
+    if (state.day % 7 === 0) {
+      const cost = 200 + state.reputation * 10;
+      state.cash -= cost;
+      addLog(`🏠 Náklady na život: -${formatCash(cost)}.`);
+    }
+    if (state.day > 30) {
+      if (state.cash >= 5000) {
+        addLog('🏆 Vyhráno! Dosáhl/a jsi cíle.');
+      } else {
+        addLog('⏳ Konec hry. Zkus to znovu a investuj dřív.');
+      }
+    }
+  }
+
+  function randomEvent() {
+    const roll = Math.random();
+    if (roll < 0.2) {
+      const bonus = 120 + state.knowledge * 30;
+      state.cash += bonus;
+      addLog(`📩 Přivýdělek: +${formatCash(bonus)}.`);
+    } else if (roll > 0.85) {
+      const cost = 90;
+      state.cash -= cost;
+      addLog(`🛠️ Neočekávaná oprava: -${formatCash(cost)}.`);
+    }
+  }
+
+  function act(action) {
+    if (state.day > 30) return;
+    switch (action) {
+      case 'work': {
+        const earn = 240 + state.knowledge * 40 + state.reputation * 15;
+        state.cash += earn;
+        state.energy -= 2;
+        state.reputation += 1;
+        addLog(`💼 Zakázka hotová: +${formatCash(earn)}.`);
+        break;
+      }
+      case 'study': {
+        const cost = 150;
+        if (state.cash < cost) {
+          addLog('⚠️ Na studium teď nemáš hotovost.');
+          return;
+        }
+        state.cash -= cost;
+        state.energy -= 2;
+        state.knowledge += 1;
+        addLog('📚 Znalosti rostou.');
+        break;
+      }
+      case 'invest': {
+        const amount = Math.min(500, state.cash - 200);
+        if (amount <= 0) {
+          addLog('⚠️ Nejdřív si nech rezervu 200 Kč.');
+          return;
+        }
+        state.cash -= amount;
+        state.invest += amount;
+        addLog(`📈 Investováno: ${formatCash(amount)}.`);
+        break;
+      }
+      case 'rest': {
+        state.energy = Math.min(10, state.energy + 4);
+        addLog('🧘 Odpočinek doplnil energii.');
+        break;
+      }
+      default:
+        return;
+    }
+    randomEvent();
+    nextDay();
+    saveState();
+    render();
+  }
+
+  actionButtons.forEach(btn => {
+    btn.addEventListener('click', () => act(btn.dataset.action));
+  });
+
+  collectBtn.addEventListener('click', () => {
+    if (state.invest <= 0) return;
+    const gain = Math.round(state.invest * (1 + (state.knowledge * 0.05)));
+    state.cash += gain;
+    addLog(`💰 Vybráno z investic: ${formatCash(gain)}.`);
+    state.invest = 0;
+    saveState();
+    render();
+  });
+
+  restartBtn.addEventListener('click', () => {
+    state = { ...START, log: ['🔄 Nová hra spuštěna.'] };
+    saveState();
+    render();
+  });
+
+  render();
 })();
 </script>
 </body>
